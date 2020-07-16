@@ -1,0 +1,52 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: We will use this yaml file for the Clarusway AWS Project
+Parameters:
+  KeyPair:
+    Description: The EC2 Key Pair to allow SSH access to the instance
+    Type: 'AWS::EC2::KeyPair::KeyName'
+
+Resources:
+  SecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: HTTP and SSH Ports will be open
+      SecurityGroupIngress:
+      - CidrIp: 0.0.0.0/0
+        FromPort: 22
+        IpProtocol: tcp
+        ToPort: 22
+      - CidrIp: 0.0.0.0/0
+        FromPort: 80
+        IpProtocol: tcp
+        ToPort: 80
+
+  Ec2Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: t2.micro
+      KeyName: !Ref KeyPair
+      ImageId: ami-08f3d892de259504d
+      SecurityGroups:
+        - !Ref SecurityGroup
+      Tags:
+        - Key: Name
+          Value: !Sub Web server of ${AWS::StackName} Stack
+
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          yum update -y
+          yum install python3 -y
+          pip3 install flask
+          wget -P templates https://raw.githubusercontent.com/Git-Clarusway/clarusway-aws-workshop/master/001-roman-numerals-converter/templates/index.html
+          wget -P templates https://raw.githubusercontent.com/Git-Clarusway/clarusway-aws-workshop/master/001-roman-numerals-converter/templates/result.html
+          wget https://raw.githubusercontent.com/Git-Clarusway/clarusway-aws-workshop/master/001-roman-numerals-converter/app.py
+          python3 app.py
+          
+Outputs:
+  URL:
+    Description: The Instance public dns address of the newly created EC2 instance
+    Value: !Sub
+      - http://${PublicAddress}
+      - PublicAddress: !GetAtt Ec2Instance.PublicDnsName
